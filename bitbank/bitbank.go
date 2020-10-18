@@ -13,10 +13,13 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 const publicEndpoint = "https://public.bitbank.cc/"
 const restEndpoint = "https://api.bitbank.cc/v1/"
+const realTimeEndpoint = "stream.bitbank.cc"
 
 // APIClient is ...
 type APIClient struct {
@@ -218,4 +221,64 @@ func (api *APIClient) GetTicker(pair string) (*Ticker, error) {
 		return nil, err
 	}
 	return &tickerResponseInfo.Data, nil
+}
+
+// JSONRPC2 is ...
+type JSONRPC2 struct {
+	Version string      `json:"jsonrpc"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params"`
+	Result  interface{} `json:"result,omitempty"`
+	ID      *int        `json:"id,omitempty"`
+}
+
+// SubscribeParams is ...
+type SubscribeParams struct {
+	Channel string `json:"channel"`
+}
+
+// GetRealTimeTicker is ...
+func (api *APIClient) GetRealTimeTicker(pair string, ch chan<- Ticker) {
+	u := url.URL{Scheme: "wss", Host: realTimeEndpoint, Path: "/socket.io"}
+	log.Printf("action=APIClient.GetRealTimeTicker, connecting to %s", u.String())
+
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatal("dial:", err)
+	}
+	defer c.Close()
+
+	channel := fmt.Sprintf("ticker_%s", pair)
+	if err := c.WriteJSON(&JSONRPC2{Version: "2.0", Method: "subscribe", Params: &SubscribeParams{channel}}); err != nil {
+		log.Fatal("subscribe:", err)
+		return
+	}
+
+OUTER:
+	for {
+		message := new(JSONRPC2)
+		if err := c.ReadJSON(message); err != nil {
+			log.Println("read:", err)
+			return
+		}
+
+		if message.Method == "channelMessage" {
+			switch v := message.Params.(type) {
+			case map[string]interface{}:
+				for key, binary := range v {
+					if key == "message" {
+						marshaTic, err := json.Marshal(binary)
+						if err != nil {
+							continue OUTER
+						}
+						var ticker Ticker
+						if err := json.Unmarshal(marshaTic, &ticker); err != nil {
+							continue OUTER
+						}
+						ch <- ticker
+					}
+				}
+			}
+		}
+	}
 }
