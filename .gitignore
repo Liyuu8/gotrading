@@ -3,3 +3,4 @@ config.ini
 formatted_resp.json
 gotrading.log
 bitflyer_gotrading.log
+stockdata.sql
