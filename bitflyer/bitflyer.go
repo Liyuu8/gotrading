@@ -128,7 +128,7 @@ type Ticker struct {
 // GetMidPrice is ...
 func (t *Ticker) GetMidPrice() float64 {
 	midPrice := (t.BestBid + t.BestAsk) / 2
-	log.Printf("action=Ticker.GetMidPrice, midPrice=%v", midPrice)
+	// log.Printf("action=Ticker.GetMidPrice, midPrice=%v", midPrice)
 	return midPrice
 }
 
@@ -138,14 +138,14 @@ func (t *Ticker) DateTime() time.Time {
 	if err != nil {
 		log.Printf("action=Ticker.DateTime, err=%s", err.Error())
 	}
-	log.Printf("action=Ticker.DateTime, dateTime=%v", dateTime)
+	// log.Printf("action=Ticker.DateTime, dateTime=%v", dateTime)
 	return dateTime
 }
 
 // TruncateDateTime is ...
 func (t *Ticker) TruncateDateTime(duration time.Duration) time.Time {
 	truncateDateTime := t.DateTime().Truncate(duration)
-	log.Printf("action=Ticker.TruncateDateTime, truncateDateTime=%v", truncateDateTime)
+	// log.Printf("action=Ticker.TruncateDateTime, truncateDateTime=%v", truncateDateTime)
 	return truncateDateTime
 }
 
