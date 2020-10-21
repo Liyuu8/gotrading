@@ -12,9 +12,8 @@ import (
 	"text/template"
 )
 
-var templates = template.Must(template.ParseFiles("app/views/chart.html"))
-
 func viewChartHandler(w http.ResponseWriter, r *http.Request) {
+	var templates = template.Must(template.ParseFiles("app/views/chart.html"))
 	err := templates.ExecuteTemplate(w, "chart.html", nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -38,10 +37,9 @@ func APIError(w http.ResponseWriter, errMessage string, code int) {
 	w.Write(jsonError)
 }
 
-var apiValidPath = regexp.MustCompile("^/api/candle/$")
-
 func apiMakeHandler(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var apiValidPath = regexp.MustCompile("^/api/candle/$")
 		m := apiValidPath.FindStringSubmatch(r.URL.Path)
 		if len(m) == 0 {
 			APIError(w, "Not found", http.StatusNotFound)
@@ -81,6 +79,14 @@ func apiCandleHandler(w http.ResponseWriter, r *http.Request) {
 
 // StartWebServer is ...
 func StartWebServer() error {
+	http.Handle(
+		"/resources/js/",
+		http.StripPrefix(
+			"/resources/js/",
+			http.FileServer(http.Dir("app/views/resources/js/")),
+		),
+	)
+
 	http.HandleFunc("/api/candle/", apiMakeHandler(apiCandleHandler))
 	// http://localhost:8080/api/candle/?product_code=BTC_JPY
 	// http://localhost:8080/api/candle/?product_code=BTC_JPY&duration=1s
