@@ -80,10 +80,10 @@ func apiCandleHandler(w http.ResponseWriter, r *http.Request) {
 // StartWebServer is ...
 func StartWebServer() error {
 	http.Handle(
-		"/resources/js/",
+		"/resources/",
 		http.StripPrefix(
-			"/resources/js/",
-			http.FileServer(http.Dir("app/views/resources/js/")),
+			"/resources/",
+			http.FileServer(http.Dir("app/views/resources/")),
 		),
 	)
 
