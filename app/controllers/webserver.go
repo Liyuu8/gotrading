@@ -12,15 +12,10 @@ import (
 	"text/template"
 )
 
-var templates = template.Must(template.ParseFiles("app/views/google.html"))
+var templates = template.Must(template.ParseFiles("app/views/chart.html"))
 
 func viewChartHandler(w http.ResponseWriter, r *http.Request) {
-	limit := 100
-	duration := "1m"
-	durationTime := config.BitflyerConfig.Durations[duration]
-	df, _ := models.GetAllCandle(config.BitflyerConfig.ProductCode, durationTime, limit)
-
-	err := templates.ExecuteTemplate(w, "google.html", df.Candles)
+	err := templates.ExecuteTemplate(w, "chart.html", nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
