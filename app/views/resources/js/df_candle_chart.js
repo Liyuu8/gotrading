@@ -21,12 +21,20 @@ var config = {
     periods: [],
     values: [],
   },
+  ema: {
+    enable: false,
+    indexs: [],
+    periods: [],
+    values: [],
+  },
 };
 
 function initConfigValues() {
   config.dataTable.index = 0;
   config.sma.indexs = [];
   config.sma.values = [];
+  config.ema.indexs = [];
+  config.ema.values = [];
 }
 
 function drawChart(dataTable) {
@@ -69,6 +77,12 @@ function drawChart(dataTable) {
       view.columns.push(config.candlestick.numViews + smaIndex);
     });
   }
+  if (config.ema.enable) {
+    config.ema.indexs.forEach((emaIndex) => {
+      options.series[emaIndex] = { type: 'line' };
+      view.columns.push(config.candlestick.numViews + emaIndex);
+    });
+  }
 
   var controlWrapper = new google.visualization.ControlWrapper({
     controlType: 'ChartRangeFilter',
@@ -98,12 +112,20 @@ function send() {
     limit: config.candlestick.limit,
     duration: config.candlestick.duration,
   };
+
   if (config.sma.enable) {
     params['sma'] = true;
     params['smaPeriod1'] = config.sma.periods[0];
     params['smaPeriod2'] = config.sma.periods[1];
     params['smaPeriod3'] = config.sma.periods[2];
   }
+  if (config.ema.enable) {
+    params['ema'] = true;
+    params['emaPeriod1'] = config.ema.periods[0];
+    params['emaPeriod2'] = config.ema.periods[1];
+    params['emaPeriod3'] = config.ema.periods[2];
+  }
+
   $.get('/api/candle/', params).done(function (data) {
     initConfigValues();
 
@@ -126,6 +148,17 @@ function send() {
         config.sma.values[index] = smaData['values'];
       });
     }
+    if (!!data['emas']) {
+      data['emas'].forEach((emaData, index) => {
+        if (emaData.length === 0) {
+          return;
+        }
+        config.dataTable.index += 1;
+        config.ema.indexs[index] = config.dataTable.index;
+        dataTable.addColumn('number', 'EMA' + emaData['period'].toString());
+        config.ema.values[index] = emaData['values'];
+      });
+    }
 
     var googleChartData = data['candles'].map((candle, index) => {
       var datas = [
@@ -142,6 +175,12 @@ function send() {
           datas.push(value[index] !== 0 ? value[index] : null)
         );
       }
+      if (!!data['emas']) {
+        config.ema.values.forEach((value) =>
+          datas.push(value[index] !== 0 ? value[index] : null)
+        );
+      }
+
       return datas;
     });
     dataTable.addRows(googleChartData);
@@ -176,6 +215,23 @@ window.onload = () => {
   });
   $('#inputSmaPeriod3').on('change', (event) => {
     config.sma.periods[2] = event.currentTarget.value;
+    send();
+  });
+
+  $('#inputEma').on('change', (event) => {
+    config.ema.enable = event.currentTarget.checked;
+    send();
+  });
+  $('#inputEmaPeriod1').on('change', (event) => {
+    config.ema.periods[0] = event.currentTarget.value;
+    send();
+  });
+  $('#inputEmaPeriod2').on('change', (event) => {
+    config.ema.periods[1] = event.currentTarget.value;
+    send();
+  });
+  $('#inputEmaPeriod3').on('change', (event) => {
+    config.ema.periods[2] = event.currentTarget.value;
     send();
   });
 };
