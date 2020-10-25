@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"github.com/markcheno/go-talib"
 )
 
 // DataFrameCandle is ...
@@ -9,6 +11,13 @@ type DataFrameCandle struct {
 	ProductCode string        `json:"product_code"`
 	Duration    time.Duration `json:"duration"`
 	Candles     []Candle      `json:"candles"`
+	Smas        []Sma         `json:"smas,omitempty"`
+}
+
+// Sma is ...
+type Sma struct {
+	Period int       `json:"period,omitempty"`
+	Values []float64 `json:"values,omitempty"`
 }
 
 // Times is ...
@@ -63,4 +72,16 @@ func (df *DataFrameCandle) Volumes() []float64 {
 		s[i] = candle.Volume
 	}
 	return s
+}
+
+// AddSma is ...
+func (df *DataFrameCandle) AddSma(period int) bool {
+	if len(df.Candles) > period {
+		df.Smas = append(df.Smas, Sma{
+			Period: period,
+			Values: talib.Sma(df.Closes(), period),
+		})
+		return true
+	}
+	return false
 }
