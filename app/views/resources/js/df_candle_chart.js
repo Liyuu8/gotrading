@@ -36,6 +36,15 @@ var config = {
     mid: [],
     down: [],
   },
+  ichimoku: {
+    enable: false,
+    indexs: [],
+    tenkan: [],
+    kijun: [],
+    senkouA: [],
+    senkouB: [],
+    chikou: [],
+  },
 };
 
 function initConfigValues() {
@@ -48,6 +57,12 @@ function initConfigValues() {
   config.bbands.up = [];
   config.bbands.mid = [];
   config.bbands.down = [];
+  config.ichimoku.indexs = [];
+  config.ichimoku.tenkan = [];
+  config.ichimoku.kijun = [];
+  config.ichimoku.senkouA = [];
+  config.ichimoku.senkouB = [];
+  config.ichimoku.chikou = [];
 }
 
 function drawChart(dataTable) {
@@ -106,6 +121,15 @@ function drawChart(dataTable) {
       view.columns.push(config.candlestick.numViews + bbandIndex);
     });
   }
+  if (config.ichimoku.enable) {
+    config.ichimoku.indexs.forEach((ichimokuIndex) => {
+      options.series[ichimokuIndex] = {
+        type: 'line',
+        lineWidth: 1,
+      };
+      view.columns.push(config.candlestick.numViews + ichimokuIndex);
+    });
+  }
 
   var controlWrapper = new google.visualization.ControlWrapper({
     controlType: 'ChartRangeFilter',
@@ -153,6 +177,9 @@ function send() {
     params['bbandsN'] = config.bbands.n;
     params['bbandsK'] = config.bbands.k;
   }
+  if (config.ichimoku.enable) {
+    params['ichimoku'] = true;
+  }
 
   $.get('/api/candle/', params).done(function (data) {
     initConfigValues();
@@ -188,14 +215,6 @@ function send() {
       });
     }
     if (!!data['bbands']) {
-      var bbandsData = {
-        n: data['bbands']['n'],
-        k: data['bbands']['k'],
-        up: data['bbands']['up'],
-        mid: data['bbands']['mid'],
-        down: data['bbands']['down'],
-      };
-
       config.dataTable.index += 1;
       config.bbands.indexs[0] = config.dataTable.index;
       config.dataTable.index += 1;
@@ -203,21 +222,47 @@ function send() {
       config.dataTable.index += 1;
       config.bbands.indexs[2] = config.dataTable.index;
 
+      var bbandsData = data['bbands'];
       dataTable.addColumn(
         'number',
-        `BBands Up (${bbandsData.n},${bbandsData.k})`
+        `BBands Up (${bbandsData['n']},${bbandsData['k']})`
       );
       dataTable.addColumn(
         'number',
-        `BBands Mid (${bbandsData.n},${bbandsData.k})`
+        `BBands Mid (${bbandsData['n']},${bbandsData['k']})`
       );
       dataTable.addColumn(
         'number',
-        `BBands Down (${bbandsData.n},${bbandsData.k})`
+        `BBands Down (${bbandsData['n']},${bbandsData['k']})`
       );
-      config.bbands.up = bbandsData.up;
-      config.bbands.mid = bbandsData.mid;
-      config.bbands.down = bbandsData.down;
+      config.bbands.up = bbandsData['up'];
+      config.bbands.mid = bbandsData['mid'];
+      config.bbands.down = bbandsData['down'];
+    }
+    if (!!data['ichimoku']) {
+      config.dataTable.index += 1;
+      config.ichimoku.indexs[0] = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.ichimoku.indexs[1] = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.ichimoku.indexs[2] = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.ichimoku.indexs[3] = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.ichimoku.indexs[4] = config.dataTable.index;
+
+      var ichimokuData = data['ichimoku'];
+      config.ichimoku.tenkan = ichimokuData['tenkan'];
+      config.ichimoku.kijun = ichimokuData['kijun'];
+      config.ichimoku.senkouA = ichimokuData['senkoua'];
+      config.ichimoku.senkouB = ichimokuData['senkoub'];
+      config.ichimoku.chikou = ichimokuData['chikou'];
+
+      dataTable.addColumn('number', 'Tenkan');
+      dataTable.addColumn('number', 'Kijun');
+      dataTable.addColumn('number', 'SenkouA');
+      dataTable.addColumn('number', 'SenkouB');
+      dataTable.addColumn('number', 'Chikou');
     }
 
     var googleChartData = data['candles'].map((candle, index) => {
@@ -249,6 +294,33 @@ function send() {
         );
         datas.push(
           config.bbands.down[index] !== 0 ? config.bbands.down[index] : null
+        );
+      }
+      if (!!data['ichimoku']) {
+        datas.push(
+          config.ichimoku.tenkan[index] !== 0
+            ? config.ichimoku.tenkan[index]
+            : null
+        );
+        datas.push(
+          config.ichimoku.kijun[index] !== 0
+            ? config.ichimoku.kijun[index]
+            : null
+        );
+        datas.push(
+          config.ichimoku.senkouA[index] !== 0
+            ? config.ichimoku.senkouA[index]
+            : null
+        );
+        datas.push(
+          config.ichimoku.senkouB[index] !== 0
+            ? config.ichimoku.senkouB[index]
+            : null
+        );
+        datas.push(
+          config.ichimoku.chikou[index] !== 0
+            ? config.ichimoku.chikou[index]
+            : null
         );
       }
 
@@ -316,6 +388,11 @@ window.onload = () => {
   });
   $('#inputBBandsK').on('change', (event) => {
     config.bbands.k = event.currentTarget.value;
+    send();
+  });
+
+  $('#inputIchimoku').on('change', (event) => {
+    config.ichimoku.enable = event.currentTarget.checked;
     send();
   });
 };
