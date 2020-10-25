@@ -11,3 +11,12 @@
 #filter_div {
   height: 50px;
 }
+
+.technical_title {
+  margin: 10px;
+  color: grey;
+}
+
+.bottom_chart {
+  border-bottom: 1px solid #ccc;
+}

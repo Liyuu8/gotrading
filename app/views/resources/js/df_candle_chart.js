@@ -45,24 +45,34 @@ var config = {
     senkouB: [],
     chikou: [],
   },
+  volume: {
+    enable: false,
+    indexs: [],
+    values: [],
+  },
 };
 
 function initConfigValues() {
   config.dataTable.index = 0;
+
   config.sma.indexs = [];
   config.sma.values = [];
   config.ema.indexs = [];
   config.ema.values = [];
+
   config.bbands.indexs = [];
   config.bbands.up = [];
   config.bbands.mid = [];
   config.bbands.down = [];
+
   config.ichimoku.indexs = [];
   config.ichimoku.tenkan = [];
   config.ichimoku.kijun = [];
   config.ichimoku.senkouA = [];
   config.ichimoku.senkouB = [];
   config.ichimoku.chikou = [];
+
+  config.volume.indexs = [];
 }
 
 function drawChart(dataTable) {
@@ -129,6 +139,34 @@ function drawChart(dataTable) {
       };
       view.columns.push(config.candlestick.numViews + ichimokuIndex);
     });
+  }
+  if (config.volume.enable) {
+    if ($('#volume_div').length === 0) {
+      $('#technical_div').append(
+        '<div id="volume_div" class="bottom_chart">' +
+          '<span class="technical_title">Volume</span>' +
+          '<div id="volume_chart"></div>' +
+          '</div>'
+      );
+    }
+    var volumeChart = new google.visualization.ChartWrapper({
+      chartType: 'ColumnChart',
+      containerId: 'volume_chart',
+      options: {
+        hAxis: { slantedText: false },
+        legend: { position: 'none' },
+        series: {},
+      },
+      view: {
+        columns: [
+          {
+            type: 'string',
+          },
+          5,
+        ],
+      },
+    });
+    charts.push(volumeChart);
   }
 
   var controlWrapper = new google.visualization.ControlWrapper({
@@ -393,6 +431,11 @@ window.onload = () => {
 
   $('#inputIchimoku').on('change', (event) => {
     config.ichimoku.enable = event.currentTarget.checked;
+    send();
+  });
+
+  $('#inputVolume').on('change', (event) => {
+    config.volume.enable = event.currentTarget.checked;
     send();
   });
 };
