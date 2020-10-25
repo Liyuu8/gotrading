@@ -50,6 +50,14 @@ var config = {
     indexs: [],
     values: [],
   },
+  rsi: {
+    enable: false,
+    indexs: { up: 0, value: 0, down: 0 },
+    period: 14,
+    up: 70,
+    values: [],
+    down: 30,
+  },
 };
 
 function initConfigValues() {
@@ -73,6 +81,8 @@ function initConfigValues() {
   config.ichimoku.chikou = [];
 
   config.volume.indexs = [];
+
+  config.rsi.indexs = [];
 }
 
 function drawChart(dataTable) {
@@ -140,6 +150,7 @@ function drawChart(dataTable) {
       view.columns.push(config.candlestick.numViews + ichimokuIndex);
     });
   }
+
   if (config.volume.enable) {
     if ($('#volume_div').length === 0) {
       $('#technical_div').append(
@@ -167,6 +178,41 @@ function drawChart(dataTable) {
       },
     });
     charts.push(volumeChart);
+  }
+
+  if (config.rsi.enable) {
+    if ($('#rsi_div').length === 0) {
+      $('#technical_div').append(
+        '<div id="rsi_div" class="bottom_chart">' +
+          '<span class="technical_title">RSI</span>' +
+          '<div id="rsi_chart"></div>' +
+          '</div>'
+      );
+    }
+    var rsiChart = new google.visualization.ChartWrapper({
+      chartType: 'LineChart',
+      containerId: 'rsi_chart',
+      options: {
+        hAxis: { slantedText: false },
+        legend: { position: 'none' },
+        series: {
+          0: { color: 'black', lineWidth: 1 },
+          1: { color: '#e2431e' },
+          2: { color: 'black', lineWidth: 1 },
+        },
+      },
+      view: {
+        columns: [
+          {
+            type: 'string',
+          },
+          config.candlestick.numViews + config.rsi.indexs.up,
+          config.candlestick.numViews + config.rsi.indexs.value,
+          config.candlestick.numViews + config.rsi.indexs.down,
+        ],
+      },
+    });
+    charts.push(rsiChart);
   }
 
   var controlWrapper = new google.visualization.ControlWrapper({
@@ -217,6 +263,10 @@ function send() {
   }
   if (config.ichimoku.enable) {
     params['ichimoku'] = true;
+  }
+  if (config.rsi.enable) {
+    params['rsi'] = true;
+    params['rsiPeriod'] = config.rsi.period;
   }
 
   $.get('/api/candle/', params).done(function (data) {
@@ -302,6 +352,22 @@ function send() {
       dataTable.addColumn('number', 'SenkouB');
       dataTable.addColumn('number', 'Chikou');
     }
+    if (!!data['rsi']) {
+      config.dataTable.index += 1;
+      config.rsi.indexs.up = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.rsi.indexs.value = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.rsi.indexs.down = config.dataTable.index;
+
+      var rsiData = data['rsi'];
+      config.rsi.period = rsiData['period'];
+      config.rsi.values = rsiData['values'];
+
+      dataTable.addColumn('number', 'RSI Thread');
+      dataTable.addColumn('number', `RSI (${config.rsi.period})`);
+      dataTable.addColumn('number', 'RSI Thread');
+    }
 
     var googleChartData = data['candles'].map((candle, index) => {
       var datas = [
@@ -360,6 +426,13 @@ function send() {
             ? config.ichimoku.chikou[index]
             : null
         );
+      }
+      if (!!data['rsi']) {
+        datas.push(config.rsi.up);
+        datas.push(
+          config.rsi.values[index] !== 0 ? config.rsi.values[index] : null
+        );
+        datas.push(config.rsi.down);
       }
 
       return datas;
@@ -436,6 +509,15 @@ window.onload = () => {
 
   $('#inputVolume').on('change', (event) => {
     config.volume.enable = event.currentTarget.checked;
+    send();
+  });
+
+  $('#inputRsi').on('change', (event) => {
+    config.rsi.enable = event.currentTarget.checked;
+    send();
+  });
+  $('#inputRsiPeriod').on('change', (event) => {
+    config.rsi.period = event.currentTarget.value;
     send();
   });
 };
