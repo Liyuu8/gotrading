@@ -27,6 +27,15 @@ var config = {
     periods: [],
     values: [],
   },
+  bbands: {
+    enable: false,
+    indexs: [],
+    n: 20,
+    k: 2,
+    up: [],
+    mid: [],
+    down: [],
+  },
 };
 
 function initConfigValues() {
@@ -35,6 +44,10 @@ function initConfigValues() {
   config.sma.values = [];
   config.ema.indexs = [];
   config.ema.values = [];
+  config.bbands.indexs = [];
+  config.bbands.up = [];
+  config.bbands.mid = [];
+  config.bbands.down = [];
 }
 
 function drawChart(dataTable) {
@@ -83,6 +96,16 @@ function drawChart(dataTable) {
       view.columns.push(config.candlestick.numViews + emaIndex);
     });
   }
+  if (config.bbands.enable) {
+    config.bbands.indexs.forEach((bbandIndex) => {
+      options.series[bbandIndex] = {
+        type: 'line',
+        color: 'blue',
+        lineWidth: 1,
+      };
+      view.columns.push(config.candlestick.numViews + bbandIndex);
+    });
+  }
 
   var controlWrapper = new google.visualization.ControlWrapper({
     controlType: 'ChartRangeFilter',
@@ -125,6 +148,11 @@ function send() {
     params['emaPeriod2'] = config.ema.periods[1];
     params['emaPeriod3'] = config.ema.periods[2];
   }
+  if (config.bbands.enable) {
+    params['bband'] = true;
+    params['bbandsN'] = config.bbands.n;
+    params['bbandsK'] = config.bbands.k;
+  }
 
   $.get('/api/candle/', params).done(function (data) {
     initConfigValues();
@@ -159,6 +187,38 @@ function send() {
         config.ema.values[index] = emaData['values'];
       });
     }
+    if (!!data['bbands']) {
+      var bbandsData = {
+        n: data['bbands']['n'],
+        k: data['bbands']['k'],
+        up: data['bbands']['up'],
+        mid: data['bbands']['mid'],
+        down: data['bbands']['down'],
+      };
+
+      config.dataTable.index += 1;
+      config.bbands.indexs[0] = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.bbands.indexs[1] = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.bbands.indexs[2] = config.dataTable.index;
+
+      dataTable.addColumn(
+        'number',
+        `BBands Up (${bbandsData.n},${bbandsData.k})`
+      );
+      dataTable.addColumn(
+        'number',
+        `BBands Mid (${bbandsData.n},${bbandsData.k})`
+      );
+      dataTable.addColumn(
+        'number',
+        `BBands Down (${bbandsData.n},${bbandsData.k})`
+      );
+      config.bbands.up = bbandsData.up;
+      config.bbands.mid = bbandsData.mid;
+      config.bbands.down = bbandsData.down;
+    }
 
     var googleChartData = data['candles'].map((candle, index) => {
       var datas = [
@@ -178,6 +238,17 @@ function send() {
       if (!!data['emas']) {
         config.ema.values.forEach((value) =>
           datas.push(value[index] !== 0 ? value[index] : null)
+        );
+      }
+      if (!!data['bbands']) {
+        datas.push(
+          config.bbands.up[index] !== 0 ? config.bbands.up[index] : null
+        );
+        datas.push(
+          config.bbands.mid[index] !== 0 ? config.bbands.mid[index] : null
+        );
+        datas.push(
+          config.bbands.down[index] !== 0 ? config.bbands.down[index] : null
         );
       }
 
@@ -232,6 +303,19 @@ window.onload = () => {
   });
   $('#inputEmaPeriod3').on('change', (event) => {
     config.ema.periods[2] = event.currentTarget.value;
+    send();
+  });
+
+  $('#inputBBands').on('change', (event) => {
+    config.bbands.enable = event.currentTarget.checked;
+    send();
+  });
+  $('#inputBBandsN').on('change', (event) => {
+    config.bbands.n = event.currentTarget.value;
+    send();
+  });
+  $('#inputBBandsK').on('change', (event) => {
+    config.bbands.k = event.currentTarget.value;
     send();
   });
 };
