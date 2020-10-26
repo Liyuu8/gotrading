@@ -64,6 +64,12 @@ var config = {
     periods: [],
     values: [],
   },
+  hv: {
+    enable: false,
+    indexes: [],
+    periods: [],
+    values: [],
+  },
 };
 
 function initConfigValues() {
@@ -93,6 +99,10 @@ function initConfigValues() {
   config.macd.indexs = [];
   config.macd.periods = [];
   config.macd.values = [];
+
+  config.hv.indexes = [];
+  config.hv.periods = [];
+  config.hv.values = [];
 }
 
 function drawChart(dataTable) {
@@ -262,6 +272,39 @@ function drawChart(dataTable) {
     charts.push(macdChart);
   }
 
+  if (config.hv.enable) {
+    if (config.hv.indexes.length == 0) {
+      return;
+    }
+    if ($('#hv_div').length == 0) {
+      $('#technical_div').append(
+        '<div id="hv_div">' +
+          '<span class="technical_title">Hv</span>' +
+          '<div id="hv_chart"></div>' +
+          '</div>'
+      );
+    }
+
+    var hvSeries = {};
+    var hvColumns = [{ type: 'string' }];
+    config.hv.indexes.forEach((index) => {
+      hvSeries[index] = { lineWidth: 1 };
+      hvColumns.push(config.candlestick.numViews + index);
+    });
+    var hvChart = new google.visualization.ChartWrapper({
+      chartType: 'LineChart',
+      containerId: 'hv_chart',
+      options: {
+        legend: { position: 'none' },
+        series: hvSeries,
+      },
+      view: {
+        columns: hvColumns,
+      },
+    });
+    charts.push(hvChart);
+  }
+
   var controlWrapper = new google.visualization.ControlWrapper({
     controlType: 'ChartRangeFilter',
     containerId: 'filter_div',
@@ -320,6 +363,12 @@ function send() {
     params['macdPeriod1'] = config.macd.periods[0];
     params['macdPeriod2'] = config.macd.periods[1];
     params['macdPeriod3'] = config.macd.periods[2];
+  }
+  if (config.hv.enable) {
+    params['hv'] = true;
+    params['hvPeriod1'] = config.hv.periods[0];
+    params['hvPeriod2'] = config.hv.periods[1];
+    params['hvPeriod3'] = config.hv.periods[2];
   }
 
   $.get('/api/candle/', params).done(function (data) {
@@ -449,6 +498,21 @@ function send() {
       config.macd.values[1] = macdSignal;
       config.macd.values[2] = macdHist;
     }
+    if (!!data['hvs']) {
+      data['hvs'].forEach((hvData, index) => {
+        if (hvData.length == 0) {
+          return;
+        }
+        config.dataTable.index += 1;
+        config.hv.indexes[index] = config.dataTable.index;
+
+        var period = hvData['period'].toString();
+        var value = hvData['values'];
+        dataTable.addColumn('number', `HV(${period})`);
+        config.hv.periods[index] = period;
+        config.hv.values[index] = value;
+      });
+    }
 
     var googleChartData = data['candles'].map((candle, index) => {
       var datas = [
@@ -517,6 +581,11 @@ function send() {
       }
       if (!!data['macd']) {
         config.macd.values.forEach((value) =>
+          datas.push(value[index] !== 0 ? value[index] : null)
+        );
+      }
+      if (!!data['hvs']) {
+        config.hv.values.forEach((value) =>
           datas.push(value[index] !== 0 ? value[index] : null)
         );
       }
@@ -595,11 +664,17 @@ window.onload = () => {
 
   $('#inputVolume').on('change', (event) => {
     config.volume.enable = event.currentTarget.checked;
+    if (!event.currentTarget.checked) {
+      $('#volume_div').remove();
+    }
     send();
   });
 
   $('#inputRsi').on('change', (event) => {
     config.rsi.enable = event.currentTarget.checked;
+    if (!event.currentTarget.checked) {
+      $('#rsi_div').remove();
+    }
     send();
   });
   $('#inputRsiPeriod').on('change', (event) => {
@@ -609,6 +684,9 @@ window.onload = () => {
 
   $('#inputMacd').on('change', (event) => {
     config.macd.enable = event.currentTarget.checked;
+    if (!event.currentTarget.checked) {
+      $('#macd_div').remove();
+    }
     send();
   });
   $('#inputMacdPeriod1').on('change', (event) => {
@@ -621,6 +699,26 @@ window.onload = () => {
   });
   $('#inputMacdPeriod3').on('change', (event) => {
     config.macd.periods[2] = event.currentTarget.value;
+    send();
+  });
+
+  $('#inputHv').on('change', (event) => {
+    config.hv.enable = event.currentTarget.checked;
+    if (!event.currentTarget.checked) {
+      $('#hv_div').remove();
+    }
+    send();
+  });
+  $('#inputHvPeriod1').on('change', (event) => {
+    config.hv.periods[0] = event.currentTarget.value;
+    send();
+  });
+  $('#inputHvPeriod2').on('change', (event) => {
+    config.hv.periods[1] = event.currentTarget.value;
+    send();
+  });
+  $('#inputHvPeriod3').on('change', (event) => {
+    config.hv.periods[2] = event.currentTarget.value;
     send();
   });
 };
