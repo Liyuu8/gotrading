@@ -58,6 +58,12 @@ var config = {
     values: [],
     down: 30,
   },
+  macd: {
+    enable: false,
+    indexs: [],
+    periods: [],
+    values: [],
+  },
 };
 
 function initConfigValues() {
@@ -83,6 +89,10 @@ function initConfigValues() {
   config.volume.indexs = [];
 
   config.rsi.indexs = [];
+
+  config.macd.indexs = [];
+  config.macd.periods = [];
+  config.macd.values = [];
 }
 
 function drawChart(dataTable) {
@@ -215,6 +225,43 @@ function drawChart(dataTable) {
     charts.push(rsiChart);
   }
 
+  if (config.macd.enable) {
+    if (config.macd.indexs === 0) {
+      return;
+    }
+    if ($('#macd_div').length === 0) {
+      $('#technical_div').append(
+        '<div id="macd_div" class="bottom_chart">' +
+          '<span class="technical_title">MACD</span>' +
+          '<div id="macd_chart"></div>' +
+          '</div>'
+      );
+    }
+    var macdChart = new google.visualization.ChartWrapper({
+      chartType: 'ComboChart',
+      containerId: 'macd_chart',
+      options: {
+        legend: { position: 'none' },
+        seriesType: 'bars',
+        series: {
+          1: { type: 'line', lineWidth: 1 },
+          2: { type: 'line', lineWidth: 1 },
+        },
+      },
+      view: {
+        columns: [
+          {
+            type: 'string',
+          },
+          config.candlestick.numViews + config.macd.indexs[2],
+          config.candlestick.numViews + config.macd.indexs[0],
+          config.candlestick.numViews + config.macd.indexs[1],
+        ],
+      },
+    });
+    charts.push(macdChart);
+  }
+
   var controlWrapper = new google.visualization.ControlWrapper({
     controlType: 'ChartRangeFilter',
     containerId: 'filter_div',
@@ -267,6 +314,12 @@ function send() {
   if (config.rsi.enable) {
     params['rsi'] = true;
     params['rsiPeriod'] = config.rsi.period;
+  }
+  if (config.macd.enable) {
+    params['macd'] = true;
+    params['macdPeriod1'] = config.macd.periods[0];
+    params['macdPeriod2'] = config.macd.periods[1];
+    params['macdPeriod3'] = config.macd.periods[2];
   }
 
   $.get('/api/candle/', params).done(function (data) {
@@ -368,6 +421,34 @@ function send() {
       dataTable.addColumn('number', `RSI (${config.rsi.period})`);
       dataTable.addColumn('number', 'RSI Thread');
     }
+    if (!!data['macd']) {
+      config.dataTable.index += 1;
+      config.macd.indexs[0] = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.macd.indexs[1] = config.dataTable.index;
+      config.dataTable.index += 1;
+      config.macd.indexs[2] = config.dataTable.index;
+
+      var macdData = data['macd'];
+      var fastPeriod = macdData['fast_period'].toString();
+      var slowPeriod = macdData['slow_period'].toString();
+      var signalPeriod = macdData['signal_period'].toString();
+      var macd = macdData['macd'];
+      var macdSignal = macdData['macd_signal'];
+      var macdHist = macdData['macd_hist'];
+
+      var periods = `(${fastPeriod}, ${slowPeriod}, ${signalPeriod})`;
+      dataTable.addColumn('number', 'MD' + periods);
+      dataTable.addColumn('number', 'MS' + periods);
+      dataTable.addColumn('number', 'HT' + periods);
+
+      config.macd.periods[0] = fastPeriod;
+      config.macd.periods[1] = slowPeriod;
+      config.macd.periods[2] = signalPeriod;
+      config.macd.values[0] = macd;
+      config.macd.values[1] = macdSignal;
+      config.macd.values[2] = macdHist;
+    }
 
     var googleChartData = data['candles'].map((candle, index) => {
       var datas = [
@@ -433,6 +514,11 @@ function send() {
           config.rsi.values[index] !== 0 ? config.rsi.values[index] : null
         );
         datas.push(config.rsi.down);
+      }
+      if (!!data['macd']) {
+        config.macd.values.forEach((value) =>
+          datas.push(value[index] !== 0 ? value[index] : null)
+        );
       }
 
       return datas;
@@ -518,6 +604,23 @@ window.onload = () => {
   });
   $('#inputRsiPeriod').on('change', (event) => {
     config.rsi.period = event.currentTarget.value;
+    send();
+  });
+
+  $('#inputMacd').on('change', (event) => {
+    config.macd.enable = event.currentTarget.checked;
+    send();
+  });
+  $('#inputMacdPeriod1').on('change', (event) => {
+    config.macd.periods[0] = event.currentTarget.value;
+    send();
+  });
+  $('#inputMacdPeriod2').on('change', (event) => {
+    config.macd.periods[1] = event.currentTarget.value;
+    send();
+  });
+  $('#inputMacdPeriod3').on('change', (event) => {
+    config.macd.periods[2] = event.currentTarget.value;
     send();
   });
 };
